@@ -12,35 +12,32 @@ const gcs = new Storage();
 
 
 // --- Crear Usuarios /Pass ---------------------------------------------------
-    exports.creaUsuarios = functions.https.onCall((data, context) => {
+    exports.creaObjetos = functions.https.onCall((data, context) => {
         // console.log('Usuario que solicita creacion:',context.auth.token)
         return admin.auth().createUser({
-            email: data.email,
-            emailVerified: false,
-            password: data.password,
+            existencia: data.existencia,
+            Verified: false,
             displayName: data.displayName,
             disabled: false
         }).then((userRecord)=> {
             // See the UserRecord reference doc for the contents of userRecord.
-            console.log("Successfully created new user:", userRecord.uid);
+            console.log("Successfully created new object:", userRecord.uid);
             data.uid = userRecord.uid;
-            return actualizaUsuario(data)
+            return actualizarObjetos(data)
             
         }).catch((error)=> {
-            console.error("Error creating new user:", error);
+            console.error("Error creating new object", error);
             // return error;
-            if(error.code === 'auth/email-already-exists'){
-                throw new functions.https.HttpsError('invalid-argument', 'La direccion de email ya esta en uso por otra cuenta de usuario');
-            }else if(error.code === 'auth/invalid-email'){
-                throw new functions.https.HttpsError('invalid-argument', 'Formato incoorecto para el email');
+            if(error.code === 'auth/existencia-already-exists'){
+                throw new functions.https.HttpsError('invalid-argument', 'La direccion de  ya esta en uso por otro objeto');
             }else{
                 throw new functions.https.HttpsError(error.code, error);
             }
         });
     });
-    exports.actualizaUsuarios = functions.https.onCall((data, context) => {
-        // console.log('Usuario que solicita creacion:',context.auth.token)
-        actualizaUsuario(data).then(()=>{console.log('ok')}).catch((error)=>{console.log('error',error)})
+    exports.actualizarObjetos = functions.https.onCall((data, context) => {
+        // console.log(' solicita creacion:',context.auth.token)
+        actualizarObjetos(data).then(()=>{console.log('ok')}).catch((error)=>{console.log('error',error)})
     });
     exports.SetSuper = functions.https.onCall((data, context) => {
         // const superUID = 'GZrOk0nDv5W7CSXRYP92uSKldRt2';
@@ -60,8 +57,8 @@ const gcs = new Storage();
             throw new functions.https.HttpsError('unknown', error.message, error);
         });
     });
-    function actualizaUsuario(data){
-        console.log("Updated user:", data);
+    function actualizarObjetos(data){
+        console.log("Updated :", data);
         let claims = {proveedor: false, admin: false, empleado: false, cliente: true}
         switch (data.rol) { //'admin' | 'empleado' | 'proveedor' | 'cliente'
             case 'proveedor':
@@ -82,12 +79,9 @@ const gcs = new Storage();
             ref.child('usuarios' + '/' + data.uid).update({
                 rol: data.rol,
                 key: data.uid,
-                email: data.email,
+                existencia: data.existencia,
                 nombre: data.nombre,
-                telefono: data.telefono,
-                cedula: data.cedula,
-                barrio: data.barrio,
-                direccion: data.direccion
+
             }).then(()=>{console.log('ok')}).catch((error)=>{console.log('error',error)})
             return data.uid
         }).catch(function (error) {
@@ -99,23 +93,22 @@ const gcs = new Storage();
 // ---- Pagos ----------------------------------------------------------------------
     exports.pagos = functions.https.onCall((data, context) => {
         // console.log('Usuario que solicita creacion:',context.auth.token)
-        const docRef = 'documentos/'+data.documento+'/abonos'
+        const docRef = 'documentos/'+data.documentos+'/abonos'
         const pagosRef = 'pagos/'+data.key
         const docRefestado = 'documentos/'+data.documento+'/estado'
         childs[docRef] = data.valor
         childs[pagosRef] = {
             key: data.key,
-            documento: data.documento,
-            fecha: data.fecha,
+            documentos: data.documentos,
             valor: data.valor,
             abono: data.abono,
-            usuario: data.usuario
+            objeto: data.objeto
         }
         if(data.estado == 'pagado'){
             childs[docRefestado] = data.estado
         }
         return ref.update(childs).then(async a=>{
-            return 'pago reportado correctamente en '+data.documento
+            return 'pago reportado correctamente en '+data.documentos
         }).catch(error=>{
             console.error(error);
             return
